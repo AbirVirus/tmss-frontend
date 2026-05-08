@@ -1,11 +1,13 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  // পরিবর্তনটি এখানে করুন
+  baseURL: 'https://tmss-backend.vercel.app/api', 
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' }
 });
 
+// ... বাকি সব কোড আগের মতোই থাকবে
 export const locationApi = {
   getDivisions: () => api.get('/locations/divisions'),
   getDistricts: (division) => api.get('/locations/districts', { params: { division } }),
