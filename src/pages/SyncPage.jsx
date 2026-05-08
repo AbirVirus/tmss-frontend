@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { syncNow, getPendingCount, isSyncing, onSyncChange } from '../services/syncService';
-import { syncApi } from '../services/api';
+import { syncApi, statusApi } from '../services/api';
 
 function useOnlineStatus() {
   const [online, setOnline] = useState(navigator.onLine);
@@ -20,11 +20,26 @@ export default function SyncPage() {
   const [result, setResult] = useState(null);
   const [serverStatus, setServerStatus] = useState(null);
   const [lastSync, setLastSync] = useState(null);
+  const [systemHealth, setSystemHealth] = useState(null);
   const online = useOnlineStatus();
 
   useEffect(() => {
     refresh();
     return onSyncChange(refresh);
+  }, []);
+
+  useEffect(() => {
+    async function fetchHealth() {
+      try {
+        const { data } = await statusApi.get();
+        setSystemHealth(data);
+      } catch (e) {
+        setSystemHealth(null);
+      }
+    }
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   async function refresh() {
@@ -116,6 +131,75 @@ export default function SyncPage() {
           </div>
         )}
       </div>
+
+      {systemHealth && (
+        <div className="card space-y-3">
+          <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2">
+            <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            System Health
+          </h3>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className={`rounded-xl p-3 text-center ${systemHealth.database?.connected ? 'bg-emerald-50' : 'bg-red-50'}`}>
+              <p className="text-xs text-gray-400">Database</p>
+              <p className={`font-bold text-sm ${systemHealth.database?.connected ? 'text-emerald-600' : 'text-red-600'}`}>
+                {systemHealth.database?.connected ? 'Connected' : 'Disconnected'}
+              </p>
+            </div>
+            <div className={`rounded-xl p-3 text-center ${systemHealth.telegram?.tokenConfigured ? 'bg-blue-50' : 'bg-gray-50'}`}>
+              <p className="text-xs text-gray-400">Telegram Bot</p>
+              <p className={`font-bold text-sm ${systemHealth.telegram?.tokenConfigured ? 'text-blue-600' : 'text-gray-500'}`}>
+                {systemHealth.telegram?.tokenConfigured ? 'Configured' : 'Not Set'}
+              </p>
+            </div>
+          </div>
+
+          {systemHealth.stats && (
+            <>
+              <hr className="border-gray-100" />
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                  <p className="text-xs text-gray-400">Members</p>
+                  <p className="font-bold text-gray-700 text-sm">{systemHealth.stats.members}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                  <p className="text-xs text-gray-400">Loans</p>
+                  <p className="font-bold text-gray-700 text-sm">{systemHealth.stats.loans}</p>
+                </div>
+                <div className={`rounded-xl p-2.5 text-center ${systemHealth.stats.todayLogExists ? 'bg-amber-50' : 'bg-gray-50'}`}>
+                  <p className="text-xs text-gray-400">Today Log</p>
+                  <p className={`font-bold text-sm ${systemHealth.stats.todayLogExists ? 'text-amber-600' : 'text-gray-500'}`}>
+                    {systemHealth.stats.todayLogExists ? 'Yes' : 'No'}
+                  </p>
+                </div>
+              </div>
+              {systemHealth.stats.todayLogExists && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
+                    <p className="text-xs text-gray-400">Collection</p>
+                    <p className="font-bold text-emerald-600 text-sm">৳{(systemHealth.stats.todayCollection || 0).toLocaleString()}</p>
+                  </div>
+                  <div className={`rounded-xl p-2.5 text-center ${systemHealth.stats.reportSent ? 'bg-blue-50' : 'bg-gray-50'}`}>
+                    <p className="text-xs text-gray-400">KM / Report</p>
+                    <p className="font-bold text-gray-700 text-sm">{systemHealth.stats.todayKm || 0}km / {systemHealth.stats.reportSent ? 'Sent' : 'No'}</p>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {!systemHealth && (
+        <div className="card flex items-center justify-center py-4">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-gray-400">Checking server health...</span>
+          </div>
+        </div>
+      )}
 
       <button onClick={handleSync} disabled={syncing || !online}
         className="btn-primary">

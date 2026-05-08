@@ -87,4 +87,9 @@ export const syncApi = {
   retryFailed: () => api.post('/sync/retry-failed')
 };
 
+export const statusApi = {
+  get: () => api.get('/status'),
+  health: () => api.get('/health')
+};
+
 export default api;
