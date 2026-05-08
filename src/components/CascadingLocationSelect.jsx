@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { locationApi } from '../services/api';
 
 const labels = ['Division', 'District', 'Upazila', 'Union/Ward', 'Village', 'Para'];
@@ -12,37 +12,37 @@ export default function CascadingLocationSelect({ value = {}, onChange }) {
   const [loading, setLoading] = useState([false, false, false, false, false, false]);
 
   useEffect(() => {
-    loadLevel(0);
+    loadLevel(0, selected);
   }, []);
 
-  async function loadLevel(idx) {
+  async function loadLevel(idx, currentSelected) {
     if (idx === 0) {
       setLoading(prev => { const n = [...prev]; n[0] = true; return n; });
       try {
         const { data } = await locationApi.getDivisions();
         setLevels(prev => { const n = [...prev]; n[0] = data; return n; });
-      } catch (e) { /* offline - load from cache */ }
+      } catch (e) { /* offline */ }
       setLoading(prev => { const n = [...prev]; n[0] = false; return n; });
       return;
     }
 
     setLoading(prev => { const n = [...prev]; n[idx] = true; return n; });
 
-    const params = [
-      null,
-      [selected[0]],
-      [selected[0], selected[1]],
-      [selected[0], selected[1], selected[2]],
-      [selected[0], selected[1], selected[2], selected[3]],
-      [selected[0], selected[1], selected[2], selected[3], selected[4]]
-    ][idx];
+    const sel = currentSelected || selected;
+    const fns = [
+      null, locationApi.getDistricts, locationApi.getUpazilas,
+      locationApi.getUnions, locationApi.getVillages, locationApi.getParas
+    ];
 
     try {
-      const fns = [
-        null, locationApi.getDistricts, locationApi.getUpazilas,
-        locationApi.getUnions, locationApi.getVillages, locationApi.getParas
-      ];
-      const { data } = await fns[idx](...params);
+      let data;
+      switch (idx) {
+        case 1: ({ data } = await fns[1](sel[0])); break;
+        case 2: ({ data } = await fns[2](sel[0], sel[1])); break;
+        case 3: ({ data } = await fns[3](sel[0], sel[1], sel[2])); break;
+        case 4: ({ data } = await fns[4](sel[0], sel[1], sel[2], sel[3])); break;
+        case 5: ({ data } = await fns[5](sel[0], sel[1], sel[2], sel[3], sel[4])); break;
+      }
       setLevels(prev => { const n = [...prev]; n[idx] = data; return n; });
 
       // Clear deeper levels
@@ -66,7 +66,7 @@ export default function CascadingLocationSelect({ value = {}, onChange }) {
     };
     onChange(location);
 
-    if (idx < 5) loadLevel(idx + 1);
+    if (idx < 5) loadLevel(idx + 1, newSel);
   }
 
   return (
