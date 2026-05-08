@@ -51,6 +51,23 @@ export default function SyncPage() {
     refresh();
   }
 
+  async function handleRetryFailed() {
+    setResult(null);
+    setSyncing(true);
+    try {
+      const { data } = await syncApi.retryFailed();
+      setResult({
+        status: data.stillFailed === 0 ? 'success' : 'error',
+        count: data.retried - data.stillFailed,
+        message: `${data.retried} items retried, ${data.stillFailed} still failing`
+      });
+    } catch (e) {
+      setResult({ status: 'error', message: e.message });
+    }
+    setSyncing(false);
+    refresh();
+  }
+
   return (
     <div className="space-y-5 page-transition">
       <h2 className="text-xl font-bold text-gray-800">Data Sync</h2>
@@ -83,6 +100,12 @@ export default function SyncPage() {
                 <p className="font-bold text-red-600 text-lg">{serverStatus.failed || 0}</p>
               </div>
             </div>
+            {serverStatus.failed > 0 && (
+              <button onClick={handleRetryFailed} disabled={syncing}
+                className="w-full py-2.5 rounded-xl bg-red-50 text-red-700 font-semibold text-sm hover:bg-red-100 disabled:opacity-50 active:scale-[0.98] transition-all duration-200">
+                Retry {serverStatus.failed} Failed Items
+              </button>
+            )}
           </>
         )}
 

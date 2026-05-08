@@ -83,7 +83,8 @@ export const dailyLogApi = {
 export const syncApi = {
   push: (operations) => api.post('/sync/push', { operations }),
   pull: (since, collections) => api.get('/sync/pull', { params: { since, collections } }),
-  status: () => api.get('/sync/status')
+  status: () => api.get('/sync/status'),
+  retryFailed: () => api.post('/sync/retry-failed')
 };
 
 export default api;
