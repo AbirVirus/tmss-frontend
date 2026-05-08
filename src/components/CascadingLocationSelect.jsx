@@ -91,7 +91,7 @@ export default function CascadingLocationSelect({ value = {}, onChange }) {
             </select>
             {loading[idx] && (
               <div className="flex items-center gap-1 mt-1 ml-1">
-                <div className="w-3 h-3 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
                 <span className="text-xs text-gray-400">Loading...</span>
               </div>
             )}

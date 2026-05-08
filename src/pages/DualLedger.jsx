@@ -105,8 +105,8 @@ export default function DualLedger() {
     : 0;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold text-primary-800">Dual Ledger System</h2>
+    <div className="space-y-4 page-transition">
+      <h2 className="text-xl font-bold text-gray-800">Dual Ledger System</h2>
 
       {/* Warning banner */}
       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">

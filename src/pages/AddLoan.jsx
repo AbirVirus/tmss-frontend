@@ -12,6 +12,7 @@ export default function AddLoan() {
   const [error, setError] = useState('');
   const [members, setMembers] = useState([]);
   const [searchPhone, setSearchPhone] = useState('');
+  const [searching, setSearching] = useState(false);
   const [form, setForm] = useState({
     memberId: preMemberId || '',
     principalAmount: '', interestRate: '15', totalInstallments: '46',
@@ -33,20 +34,22 @@ export default function AddLoan() {
 
   async function searchByPhone() {
     if (!searchPhone) return;
+    setSearching(true);
+    setError('');
     try {
       const { data } = await memberApi.getByPhone(searchPhone);
       setMembers([data]);
       setForm(f => ({ ...f, memberId: data._id }));
     } catch (e) {
       setError('Member not found with that phone number');
+      setMembers([]);
     }
+    setSearching(false);
   }
 
   function updateField(field, value) {
     setForm(prev => {
       const updated = { ...prev, [field]: value };
-
-      // Auto-calculate installment amount
       if (['principalAmount', 'interestRate', 'totalInstallments'].includes(field)) {
         const p = +updated.principalAmount || 0;
         const rate = +updated.interestRate || 0;
@@ -54,7 +57,6 @@ export default function AddLoan() {
         const totalPayable = p + (p * rate / 100);
         updated.installmentAmount = Math.round(totalPayable / installments);
       }
-
       return updated;
     });
   }
@@ -64,6 +66,10 @@ export default function AddLoan() {
     setError('');
     if (!form.memberId || !form.principalAmount) {
       setError('Please select a member and enter principal amount');
+      return;
+    }
+    if (+form.principalAmount <= 0) {
+      setError('Principal amount must be greater than 0');
       return;
     }
     setSaving(true);
@@ -84,48 +90,68 @@ export default function AddLoan() {
   const totalPayable = (+form.principalAmount || 0) + ((+form.principalAmount || 0) * (+form.interestRate || 0) / 100);
 
   return (
-    <div className="space-y-4">
-      <button onClick={() => navigate(-1)} className="text-primary-600 font-semibold text-sm flex items-center gap-1">
+    <div className="space-y-4 page-transition">
+      <button onClick={() => navigate(-1)} className="text-teal-600 font-semibold text-sm flex items-center gap-1 hover:text-teal-700 transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Back
       </button>
 
-      <h2 className="text-lg font-bold text-primary-800">Disburse New Loan</h2>
+      <h2 className="text-xl font-bold text-gray-800">Disburse New Loan</h2>
 
-      {error && <p className="text-red-600 text-sm bg-red-50 p-3 rounded-xl">{error}</p>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+          <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Member search */}
-        <div className="card space-y-2">
-          <h3 className="font-semibold text-gray-700 text-sm">Find Member</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="card space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-teal-500" />
+            <h3 className="font-bold text-gray-700 text-sm">Find Member</h3>
+          </div>
           {!preMemberId && (
             <div className="flex gap-2">
-              <input className="input-field flex-1" type="tel" placeholder="Search by phone..."
-                value={searchPhone} onChange={e => setSearchPhone(e.target.value)} />
-              <button type="button" onClick={searchByPhone}
-                className="bg-primary-600 text-white px-4 rounded-xl text-sm font-semibold">Search</button>
+              <input className="input-field flex-1" type="tel" placeholder="Search by phone number..."
+                value={searchPhone} onChange={e => setSearchPhone(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && searchByPhone()} />
+              <button type="button" onClick={searchByPhone} disabled={searching}
+                className="bg-teal-600 text-white px-5 rounded-xl text-sm font-bold hover:bg-teal-700 disabled:opacity-50 transition-colors">
+                {searching ? '...' : 'Search'}
+              </button>
             </div>
           )}
           {members.map(m => (
             <div key={m._id}
-              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                form.memberId === m._id ? 'border-primary-500 bg-primary-50' : 'border-gray-200'
+              className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
+                form.memberId === m._id ? 'border-teal-500 bg-teal-50 shadow-sm' : 'border-gray-200 hover:border-gray-300'
               }`}
               onClick={() => setForm(f => ({ ...f, memberId: m._id }))}>
-              <p className="font-semibold text-sm">{m.name}</p>
-              <p className="text-xs text-gray-400">{m.phone} &middot; {m.memberId}</p>
+              <p className="font-bold text-sm text-gray-800">{m.name}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{m.phone} &middot; {m.memberId}</p>
+              {m.location?.village && (
+                <p className="text-xs text-gray-400 mt-0.5">{m.location.village}{m.location.para ? ' > ' + m.location.para : ''}</p>
+              )}
             </div>
           ))}
+          {!preMemberId && members.length === 0 && !searching && searchPhone && (
+            <p className="text-xs text-gray-400 text-center py-2">Search for a member by phone number to continue</p>
+          )}
         </div>
 
-        {/* Loan details */}
         <div className="card space-y-3">
-          <h3 className="font-semibold text-gray-700 text-sm">Loan Details</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-amber-500" />
+            <h3 className="font-bold text-gray-700 text-sm">Loan Details</h3>
+          </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">Principal Amount (৳)</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">Principal Amount * (৳)</label>
             <input type="number" className="input-field" placeholder="e.g. 20000"
               value={form.principalAmount} onChange={e => updateField('principalAmount', e.target.value)} />
           </div>
@@ -146,7 +172,9 @@ export default function AddLoan() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">Per Installment</label>
-              <input className="input-field" disabled value={`৳${(form.installmentAmount || 0).toLocaleString()}`} />
+              <div className="input-field bg-gray-50 text-gray-700 font-semibold">
+                ৳{(form.installmentAmount || 0).toLocaleString()}
+              </div>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1 ml-1">Start Date</label>
@@ -155,16 +183,25 @@ export default function AddLoan() {
             </div>
           </div>
 
-          <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Total Payable:</span>
-              <span className="font-bold text-blue-700">৳{totalPayable.toLocaleString()}</span>
+          <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-600 font-medium">Total Payable:</span>
+              <span className="font-bold text-blue-700 text-lg">৳{totalPayable.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center text-xs mt-1.5 text-gray-500">
+              <span>{form.totalInstallments} installments</span>
+              <span>৳{(form.installmentAmount || 0).toLocaleString()} each</span>
             </div>
           </div>
         </div>
 
         <button type="submit" disabled={saving} className="btn-primary">
-          {saving ? 'Disbursing...' : 'Disburse Loan'}
+          {saving ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Disbursing...
+            </span>
+          ) : 'Disburse Loan'}
         </button>
       </form>
     </div>

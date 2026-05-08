@@ -132,8 +132,8 @@ export default function RouteTracker() {
   const computedFuelCost = computedDistance ? Math.round(computedDistance * (+fuelRate || 15)) : 0;
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold text-primary-800">Route & Mileage Tracker</h2>
+    <div className="space-y-4 page-transition">
+      <h2 className="text-xl font-bold text-gray-800">Route & Mileage Tracker</h2>
 
       {/* Saved route summary */}
       {todayRoute && (
